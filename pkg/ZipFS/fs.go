@@ -3,12 +3,13 @@ package ZipFS
 import (
 	"archive/zip"
 	"fmt"
-	"github.com/pkg/errors"
 	"io"
 	"io/fs"
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/pkg/errors"
 )
 
 type ReaderAtCloser interface {
@@ -108,7 +109,7 @@ func (zfs *ZipFS) ReadDir(name string) ([]fs.DirEntry, error) {
 	}
 }
 
-func fileInfo(f zip.Reader) (fs.FileInfo, error) {
+func fileInfo(f *zip.File, zfs *ZipFS, name string, nameDir string) (fs.FileInfo, error) {
 	fi := &FileInfo{
 		zipFS:     zfs,
 		name:      name,
@@ -124,17 +125,18 @@ func fileInfo(f zip.Reader) (fs.FileInfo, error) {
 		fi.modTime = f.Modified
 		fi.mode = f.Mode()
 		return fi, nil
-	} else if strings.HasPrefix(f.Name, nameDir) {
+	} else if strings.HasPrefix(nameDir, f.Name) {
 		fi.isDir = true
 		fi.mode = fs.ModeDir | fs.ModePerm
 		return fi, nil
 	}
-
+	return nil, fs.ErrNotExist
 }
 
 func (zfs *ZipFS) fileInfo(name string) (fs.FileInfo, error) {
 	nameDir := strings.TrimRight(name, "/") + "/"
 	for _, f := range zfs.zip.File {
+		fileInfo(f, zfs, name, nameDir)
 	}
 	return nil, fs.ErrNotExist
 }
