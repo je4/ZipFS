@@ -83,31 +83,31 @@ func (zfs *ZipFS) Close() error {
 	return nil
 }
 
-func (zfs *ZipFS) ReadDir(name string) ([]fs.DirEntry, error) {
-	if err := zfs.openZip(); err != nil {
-		return nil, errors.Wrapf(err, "zfs.ReadDir: cannot open zip %s directory %s", zfs.path, name)
-	}
+// func (zfs *ZipFS) ReadDir(name string) ([]fs.DirEntry, error) {
+// 	if err := zfs.openZip(); err != nil {
+// 		return nil, errors.Wrapf(err, "zfs.ReadDir: cannot open zip %s directory %s", zfs.path, name)
+// 	}
 
-	result := []*DirEntry{}
-	addIfNew := func(de *DirEntry) {
-		found := false
-		for _, de := range result {
-			if de.Name() == name {
-				found = true
-				break
-			}
-		}
-		if !found {
-			result = append(result, de)
-		}
-	}
+// 	result := []*DirEntry{}
+// 	addIfNew := func(de *DirEntry) {
+// 		found := false
+// 		for _, de := range result {
+// 			if de.Name() == name {
+// 				found = true
+// 				break
+// 			}
+// 		}
+// 		if !found {
+// 			result = append(result, de)
+// 		}
+// 	}
 
-	name = filepath.ToSlash(filepath.Clean(name))
+// 	name = filepath.ToSlash(filepath.Clean(name))
 
-	for _, f := range zfs.zip.File {
+// 	for _, f := range zfs.zip.File {
 
-	}
-}
+// 	}
+// }
 
 func fileInfo(f *zip.File, zfs *ZipFS, name string, nameDir string) (fs.FileInfo, error) {
 	fi := &FileInfo{
@@ -125,7 +125,7 @@ func fileInfo(f *zip.File, zfs *ZipFS, name string, nameDir string) (fs.FileInfo
 		fi.modTime = f.Modified
 		fi.mode = f.Mode()
 		return fi, nil
-	} else if strings.HasPrefix(nameDir, f.Name) {
+	} else if strings.HasPrefix(f.Name, nameDir) {
 		fi.isDir = true
 		fi.mode = fs.ModeDir | fs.ModePerm
 		return fi, nil
@@ -136,7 +136,14 @@ func fileInfo(f *zip.File, zfs *ZipFS, name string, nameDir string) (fs.FileInfo
 func (zfs *ZipFS) fileInfo(name string) (fs.FileInfo, error) {
 	nameDir := strings.TrimRight(name, "/") + "/"
 	for _, f := range zfs.zip.File {
-		fileInfo(f, zfs, name, nameDir)
+		fi, _ := fileInfo(f, zfs, name, nameDir)
+		// if err != nil {
+		// 	return nil, errors.Wrapf(err, "zfs.fileInfo: cannot get fileInfo of %s in %s", name, zfs.path)
+		// }
+		if fi != nil && fi.Name() == name {
+			fmt.Println("fi: ", fi)
+			return fi, nil
+		}
 	}
 	return nil, fs.ErrNotExist
 }
