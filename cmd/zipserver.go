@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"io/fs"
@@ -30,11 +31,11 @@ func (sfs *ServerFS) uploadFile(w http.ResponseWriter, r *http.Request) {
 
 	// Create file
 	dst, err := os.Create(handler.Filename)
-	defer dst.Close()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+	defer dst.Close()
 
 	// Copy the uploaded file to the created file on the filesystem
 	if _, err := io.Copy(dst, file); err != nil {
@@ -42,14 +43,18 @@ func (sfs *ServerFS) uploadFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	log.Println("dst name: ", dst.Name())
+
 	zfs, err := ZipFS.NewZipFS(os.DirFS("."), dst.Name())
 	if err != nil {
 		log.Fatalf("cannot open test zip: %v", err)
 	}
-	// here is a problem? Error when not commented
-	// defer zfs.Close()
 
-	log.Println("zfs: ", zfs)
+	// here ?
+	defer zfs.Close()
+
+	sfs.fs = zfs
+	log.Println("zfs: ", zfs, "sfs: ", sfs.fs)
 
 	fname := "zip"
 	list, err := zfs.ReadDir(fname)
@@ -57,12 +62,35 @@ func (sfs *ServerFS) uploadFile(w http.ResponseWriter, r *http.Request) {
 		log.Fatalf("cannot get directories from %s in zip: %v", fname, err)
 	}
 
-	sfs.fs = zfs
 	fmt.Fprintf(w, "Successfully Uploaded zip file second entry: %s\n", list[1].Name())
 }
 
-func displayZip(sfs ServerFS) http.Handler {
-	return http.FileServer(http.FS(sfs.fs))
+type ZipRequest struct {
+	Filename string
+	Path     string
+}
+
+func (sfs *ServerFS) readDir(w http.ResponseWriter, r *http.Request) {
+	decoder := json.NewDecoder(r.Body)
+	var zr ZipRequest
+	err := decoder.Decode(&zr)
+	if err != nil {
+		panic(err)
+	}
+
+	zfs, err := ZipFS.NewZipFS(os.DirFS("."), zr.Path)
+	if err != nil {
+		log.Fatalf("cannot open test zip: %v", err)
+	}
+
+	defer zfs.Close()
+
+	fname := zr.Filename
+	list, err := zfs.ReadDir(fname)
+	if err != nil {
+		log.Fatalf("cannot get directories from %s in zip: %v", fname, err)
+	}
+	fmt.Fprintf(w, "Successfully read zip file second entry: %s\n", list[1].Name())
 }
 
 type ServerFS struct {
@@ -72,8 +100,9 @@ type ServerFS struct {
 func main() {
 	serverFS := ServerFS{fs: os.DirFS(".")}
 
-	http.Handle("/", displayZip(serverFS))
+	http.Handle("/", http.FileServer(http.FS(serverFS.fs)))
 	http.HandleFunc("/upload", serverFS.uploadFile)
+	http.HandleFunc("/read", serverFS.readDir)
 
 	err := http.ListenAndServe(":8080", nil)
 	log.Fatal(err)
