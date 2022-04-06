@@ -15,34 +15,34 @@ type FileInfo struct {
 	mode      fs.FileMode
 }
 
-func (de *FileInfo) Mode() fs.FileMode {
+func (de FileInfo) Mode() fs.FileMode {
 	return de.mode
 }
 
-func (de *FileInfo) ModTime() time.Time {
+func (de FileInfo) ModTime() time.Time {
 	return de.modTime
 }
 
-func (de *FileInfo) Name() string {
+func (de FileInfo) Name() string {
 	return de.name
 }
 
-func (de *FileInfo) Size() int64 {
+func (de FileInfo) Size() int64 {
 	return de.size
 }
 
-func (de *FileInfo) IsDir() bool {
+func (de FileInfo) IsDir() bool {
 	return de.isDir
 }
 
-func (de *FileInfo) IsRegular() bool {
+func (de FileInfo) IsRegular() bool {
 	return de.isRegular
 }
 
-func (de *FileInfo) Type() fs.FileMode {
+func (de FileInfo) Type() fs.FileMode {
 	return de.mode
 }
 
-func (de *FileInfo) Sys() interface{} {
+func (de FileInfo) Sys() interface{} {
 	return nil
 }
