@@ -18,6 +18,6 @@ func (de *DirEntry) Type() fs.FileMode {
 	return de.FileInfo.Mode()
 }
 
-func (de *DirEntry) Info() (FileInfo, error) {
-	return de.FileInfo, nil
+func (de *DirEntry) Info() (fs.FileInfo, error) {
+	return fs.FileInfo(de.FileInfo), nil
 }

@@ -83,31 +83,40 @@ func (zfs *ZipFS) Close() error {
 	return nil
 }
 
-// func (zfs *ZipFS) ReadDir(name string) ([]fs.DirEntry, error) {
-// 	if err := zfs.openZip(); err != nil {
-// 		return nil, errors.Wrapf(err, "zfs.ReadDir: cannot open zip %s directory %s", zfs.path, name)
-// 	}
+func (zfs *ZipFS) ReadDir(dir string) ([]fs.DirEntry, error) {
+	if err := zfs.openZip(); err != nil {
+		return nil, errors.Wrapf(err, "zfs.ReadDir: cannot open zip %s directory %s", zfs.path, dir)
+	}
 
-// 	result := []*DirEntry{}
-// 	addIfNew := func(de *DirEntry) {
-// 		found := false
-// 		for _, de := range result {
-// 			if de.Name() == name {
-// 				found = true
-// 				break
-// 			}
-// 		}
-// 		if !found {
-// 			result = append(result, de)
-// 		}
-// 	}
+	result := []fs.DirEntry{}
+	addIfNew := func(de fs.DirEntry) {
+		found := false
+		for _, d := range result {
+			if de.Name() == d.Name() {
+				found = true
+				break
+			}
+		}
+		if !found {
+			result = append(result, de)
+		}
+	}
 
-// 	name = filepath.ToSlash(filepath.Clean(name))
+	dir = strings.TrimRight(dir, "/") + "/"
+	for _, d := range zfs.zip.File {
+		if strings.HasPrefix(d.Name, dir) {
+			h := strings.TrimPrefix(d.Name, dir)
+			parts := strings.Split(h, "/")
+			if len(parts) > 0 {
+				addIfNew(&DirEntry{FileInfo: FileInfo{zipFS: zfs, name: parts[0], size: 0, isDir: true, isRegular: false, modTime: d.Modified, mode: fs.ModeDir | 0777}})
+			} else {
+				addIfNew(&DirEntry{FileInfo: FileInfo{zipFS: zfs, name: parts[0], size: int64(d.UncompressedSize64), isDir: false, isRegular: true, modTime: d.Modified, mode: d.Mode()}})
+			}
+		}
+	}
 
-// 	for _, f := range zfs.zip.File {
-
-// 	}
-// }
+	return result, nil
+}
 
 func fileInfo(f *zip.File, zfs *ZipFS, name string, nameDir string) (fs.FileInfo, error) {
 	fi := &FileInfo{

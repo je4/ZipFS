@@ -44,3 +44,18 @@ func TestFileInfo(t *testing.T) {
 	}
 	fmt.Println("info: ", info)
 }
+
+func TestReadDir(t *testing.T) {
+	zfs, err := NewZipFS(os.DirFS("../.."), "testdata/test.zip")
+	if err != nil {
+		t.Fatalf("cannot open test zip: %v", err)
+	}
+	defer zfs.Close()
+
+	fname := "zip/subfolder1"
+	list, err := zfs.ReadDir(fname)
+	if err != nil {
+		t.Fatalf("cannot get directories from %s in zip: %v", fname, err)
+	}
+	fmt.Println("directories: ", list)
+}
