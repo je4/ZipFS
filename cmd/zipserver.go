@@ -44,25 +44,7 @@ func (sfs *ServerFS) uploadFile(w http.ResponseWriter, r *http.Request) {
 	}
 
 	log.Println("dst name: ", dst.Name())
-
-	zfs, err := ZipFS.NewZipFS(os.DirFS("."), dst.Name())
-	if err != nil {
-		log.Fatalf("cannot open test zip: %v", err)
-	}
-
-	// here ?
-	defer zfs.Close()
-
-	sfs.fs = zfs
-	log.Println("zfs: ", zfs, "sfs: ", sfs.fs)
-
-	fname := "zip"
-	list, err := zfs.ReadDir(fname)
-	if err != nil {
-		log.Fatalf("cannot get directories from %s in zip: %v", fname, err)
-	}
-
-	fmt.Fprintf(w, "Successfully Uploaded zip file second entry: %s\n", list[1].Name())
+	fmt.Fprintf(w, "Successfully Uploaded zip file\n")
 }
 
 type ZipRequest struct {
@@ -100,10 +82,18 @@ type ServerFS struct {
 func main() {
 	serverFS := ServerFS{fs: os.DirFS(".")}
 
-	http.Handle("/", http.FileServer(http.FS(serverFS.fs)))
+	zfs, err := ZipFS.NewZipFS(os.DirFS("../testdata"), "photo.zip")
+	if err != nil {
+		log.Fatalf("cannot open zip: %v", err)
+	}
+
+	defer zfs.Close()
+
+	// http.Handle("/", http.FileServer(http.FS(serverFS.fs)))
+	http.Handle("/", http.FileServer(http.FS(zfs)))
 	http.HandleFunc("/upload", serverFS.uploadFile)
 	http.HandleFunc("/read", serverFS.readDir)
 
-	err := http.ListenAndServe(":8080", nil)
+	err = http.ListenAndServe(":8080", nil)
 	log.Fatal(err)
 }
